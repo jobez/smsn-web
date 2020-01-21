@@ -6,13 +6,15 @@ import Control.Coroutine as CR
 import Control.Coroutine.Aff (emit)
 import Control.Coroutine.Aff as CRA
 import Control.Monad.Except (runExcept)
+import Data.Argonaut (class DecodeJson, class EncodeJson, Json, decodeJson, encodeJson, fromArray, jsonEmptyObject, stringify, (.!=), (.:), (.:?), (:=), (:=?), (~>), (~>?))
 import Data.Either (either)
 import Data.Foldable (for_)
 import Data.Maybe (Maybe(..))
-import Effect (Effect)
 import Data.UUID (genUUID, genv3UUID, genv5UUID, parseUUID, toString)
+import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
+import Effect.Console as Console
 import Example.Driver.Websockets.Log as Log
 import Foreign (F, Foreign, unsafeToForeign, readString)
 import Halogen as H
@@ -31,10 +33,25 @@ newtype Args = Args {
 
 
 newtype WSMsg = WSMsg
-  { requestId :: String
+  { id :: String
   , op :: String
+  , processor :: String
   , args :: Args
   }
+
+instance encodeArgs :: EncodeJson Args where
+  encodeJson (Args args)
+     = "gremlin" := args.gremlin
+    ~> "language" := args.language
+    ~> "bindings" := jsonEmptyObject
+
+instance encodeWSMsg :: EncodeJson WSMsg where
+  encodeJson (WSMsg msg)
+     = "requestId" := msg.id
+    ~> "op" := msg.op
+    ~> "processor" := msg.processor
+    ~> "args" := msg.args
+    ~> jsonEmptyObject
 
 -- A producer coroutine that emits messages that arrive from the websocket.
 wsProducer :: WS.WebSocket -> CR.Producer String Aff Unit
@@ -67,8 +84,16 @@ wsSender :: WS.WebSocket -> CR.Consumer Log.Message Aff Unit
 wsSender socket = CR.consumer \msg -> do
   case msg of
     Log.OutputMessage msgContents ->
-      liftEffect $ WS.sendString socket msgContents
+      liftEffect $ WS.sendString socket $ stringify gremlinJson
+      where gremlinMsg = WSMsg {id: "",
+                                op: "eval",
+                                processor: "",
+                                args: argz}
+            argz = Args {gremlin: msgContents, language: "gremlin-groovy"}
+            gremlinJson = encodeJson gremlinMsg
   pure Nothing
+
+
 
 main :: Effect Unit
 main = do

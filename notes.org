@@ -1,0 +1,7 @@
+* relevant gremlin queries
+  Special thanks for the very nice exemplar of
+  https://github.com/bricaud/graphexp.git
+** the hello world query
+   #+begin_src gremlin
+   nodes = g.V().groupCount().by(label);
+   #+end_src

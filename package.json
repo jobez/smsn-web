@@ -1,0 +1,23 @@
+{
+  "name": "smsn-web",
+  "version": "0.0.1",
+  "description": "view the knowledge graph... from the browser!",
+  "scripts": {
+    "postinstall": "spago install",
+    "clean": "rm -rf node_modules output .spago dist/* *.lock",
+    "build": "spago build",
+    "watch": "spago build --watch",
+    "bundle": "spago bundle-app --main Main --to dist/app.js && parcel build dist/index.html",
+    "serve": "yarn bundle && http-server dist",
+    "test": "spago test"
+  },
+  "author": "Zagreus",
+  "license": "MIT",
+  "dependencies": {
+      "cssnano": "^4.1.10",
+      "uuid": "3.4.0",
+      "uuid-validate": "0.0.3",
+      "http-server": "^0.11.1",
+      "marked": "^0.6.2"
+  }
+}

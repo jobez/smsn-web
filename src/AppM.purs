@@ -22,7 +22,7 @@ import Effect.Ref as Ref
 import Example.Driver.Websockets.Log as Log
 import Foreign (F, Foreign, unsafeToForeign, readString)
 import Halogen as H
-import SmsnWeb.Capability.Graph (class GraphM)
+import SmsnWeb.Capability.WebsocketM (class WebsocketM)
 import SmsnWeb.Env (LogLevel(..), Env)
 import Type.Equality (class TypeEquals, from)
 import Web.Event.EventTarget as EET
@@ -30,11 +30,7 @@ import Web.Socket.Event.EventTypes as WSET
 import Web.Socket.Event.MessageEvent as ME
 import Web.Socket.WebSocket as WS
 
-
-
 newtype AppM a = AppM (ReaderT Env Aff a)
-
-
 runAppM :: Env -> AppM ~> Aff
 runAppM env (AppM m) = runReaderT m env
 
@@ -54,8 +50,6 @@ newtype Args = Args {
   gremlin :: String
   , language :: String
     }
-
-
 newtype WSMsg = WSMsg
   { id :: String
   , op :: String
@@ -116,3 +110,13 @@ wsSender socket = CR.consumer \msg -> do
             argz = Args {gremlin: msgContents, language: "gremlin-groovy"}
             gremlinJson = encodeJson gremlinMsg
   pure Nothing
+
+
+instance websocketAppM :: WebsocketM AppM where
+  connect url = liftEffect $ do
+    -- log $ "Setup ws to: " <> url
+    connection <- WS.create url []
+    --socket.onopen $= \event -> do
+    pure unit
+  disconnect =
+    liftEffect $ do pure unit

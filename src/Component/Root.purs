@@ -21,6 +21,8 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen (HalogenIO, liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.HTML.Events as HE
 import Routing.Duplex (parse)
 import Routing.Hash (getHash)
 import SmsnWeb.Capability.WebsocketM (class WebsocketM, connect)
@@ -101,9 +103,15 @@ component = H.mkComponent
       pure (Just a)
 
 
+
   render :: State -> HTML m
   render state =
-    HH.div_ [HH.text "Send Message"]
+    HH.button
+      [ HP.title "hey"
+      , HE.onClick \_ -> Just $ Connect "foo"
+      ]
+      [ HH.text "Socket" ]
+
 
 
 

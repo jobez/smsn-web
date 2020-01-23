@@ -31,5 +31,6 @@
 	, "aff-coroutines"
 	, "effect"
 	, "uuid"
+	, "logging"
 	]
 }

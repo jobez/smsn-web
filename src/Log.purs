@@ -9,6 +9,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import SmsnWeb.Capability.WebsocketM (class WebsocketM, connect)
 import Web.Event.Event (Event)
 import Web.Event.Event as Event
 

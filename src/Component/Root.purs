@@ -4,7 +4,7 @@ module SmsnWeb.Component.Root
   , Query(..)
   , Action(..)
   -- , Input
-  , Message
+  , SmsnAction
   , wsSender
   , wsProducer
   , wsConsumer
@@ -48,13 +48,13 @@ import Web.Socket.Event.MessageEvent as ME
 import Web.Socket.WebSocket as WS
 
 
-type IO = HalogenIO Query Message Aff
+type IO = HalogenIO Query SmsnAction Aff
 
-type Slot = H.Slot Query Message
+type Slot = H.Slot Query SmsnAction
 
 data Query a = ReceiveMessage String a
 
-data Message = OutputMessage String
+data SmsnAction = FindRoot
 
 type State =
   { messages :: Array String
@@ -66,31 +66,33 @@ type State =
 --   }
 
 -- data Query a = Navigate Route a
+type Filter =  {minSource :: String
+               , defaultSource :: String
+               , minWeight :: Number
+               , defaultWeight :: Number
+               , titleCutoff :: Int
+               , style :: String}
 
-newtype Args = Args {
-  gremlin :: String
+
+type Act = { action :: String
+           , height :: Int
+           , filter :: Filter
+
+           }
+
+
+type Args =  {
+  gremlin :: Act
   , language :: String
-    }
-newtype WSMsg = WSMsg
-  { id :: String
-  , op :: String
+  , session :: String}
+
+type WSMsg =
+  {
+   op :: String
   , processor :: String
   , args :: Args
   }
 
-instance encodeArgs :: EncodeJson Args where
-  encodeJson (Args args)
-     = "gremlin" := args.gremlin
-    ~> "language" := args.language
-    ~> "bindings" := jsonEmptyObject
-
-instance encodeWSMsg :: EncodeJson WSMsg where
-  encodeJson (WSMsg msg)
-     = "requestId" := msg.id
-    ~> "op" := msg.op
-    ~> "processor" := msg.processor
-    ~> "args" := msg.args
-    ~> jsonEmptyObject
 
 -- A producer coroutine that emits messages that arrive from the websocket.
 wsProducer :: WS.WebSocket -> CR.Producer String Aff Unit
@@ -120,16 +122,24 @@ wsConsumer query = CR.consumer \msg -> do
 -- A consumer coroutine that takes output messages from our component IO
 -- and sends them using the websocket
 
-wsSender :: WS.WebSocket -> CR.Consumer Message Aff Unit
+wsSender :: WS.WebSocket -> CR.Consumer SmsnAction Aff Unit
 wsSender socket = CR.consumer \msg -> do
   case msg of
-    OutputMessage msgContents ->
+    FindRoot ->
       liftEffect $ WS.sendString socket $ stringify gremlinJson
-      where gremlinMsg = WSMsg {id: "",
-                                op: "eval",
-                                processor: "",
-                                args: argz}
-            argz = Args {gremlin: msgContents, language: "gremlin-groovy"}
+      where gremlinMsg =  {op: "eval",
+                           processor: "session",
+                           args: argz}
+            argz = {gremlin: findRoot, language: "smsn", session: "undefined"}
+            findRoot = { action: "net.fortytwo.smsn.server.actions.NoAction"
+                       , height: 2
+                       , filter: filter}
+            filter =  {minSource: "private"
+                      , defaultSource: "private"
+                      , minWeight: 0.0
+                      , defaultWeight: 0.5
+                      , titleCutoff: 100
+                      , style: "forward"}
             gremlinJson = encodeJson gremlinMsg
   pure Nothing
 
@@ -155,7 +165,7 @@ _navigation = SProxy :: SProxy "navigation"
 _login = SProxy :: SProxy "login"
 
 type HTML m = H.ComponentHTML Action ChildSlots m
-type ComponentM m eff = H.HalogenM State Action ChildSlots Message m eff
+type ComponentM m eff = H.HalogenM State Action ChildSlots SmsnAction m eff
 type QueryHandler m = forall a. Query a -> ComponentM m (Maybe a)
 type ActionHandler m = Action -> ComponentM m Unit
 
@@ -166,7 +176,7 @@ component
   => WebsocketM m
   => MonadEffect m
   => Logging m
-  => H.Component HH.HTML Query i Message m
+  => H.Component HH.HTML Query i SmsnAction m
 component = H.mkComponent
   { initialState
   , render
@@ -197,7 +207,7 @@ component = H.mkComponent
       H.liftEffect $ Event.preventDefault ev
       st <- H.get
       let outgoingMessage = st.inputText
-      H.raise $ OutputMessage outgoingMessage
+      H.raise $ FindRoot
       H.modify_ \st' -> st'
         { messages = st'.messages `A.snoc` ("Sending: " <> outgoingMessage)
       , inputText = ""
